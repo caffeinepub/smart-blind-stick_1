@@ -46,6 +46,30 @@ function formatTimestamp(ts: bigint): string {
   return new Date(ms).toLocaleString();
 }
 
+const defaultDemo: Location[] = [
+  {
+    id: BigInt(1),
+    latitude: 28.6139,
+    longitude: 77.209,
+    timestamp: BigInt(Date.now() * 1_000_000 - 3600 * 1e9),
+    status: Status.Safe,
+  },
+  {
+    id: BigInt(2),
+    latitude: 19.076,
+    longitude: 72.8777,
+    timestamp: BigInt(Date.now() * 1_000_000 - 7200 * 1e9),
+    status: Status.Emergency,
+  },
+  {
+    id: BigInt(3),
+    latitude: 12.9716,
+    longitude: 77.5946,
+    timestamp: BigInt(Date.now() * 1_000_000 - 10800 * 1e9),
+    status: Status.Safe,
+  },
+];
+
 export default function Tracking() {
   const { data: locations = [], isLoading: locLoading } = useGetAllLocations();
   const { data: stats } = useGetStatistics();
@@ -56,6 +80,8 @@ export default function Tracking() {
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [status, setStatus] = useState<"Safe" | "Emergency">("Safe");
+  const [localDemoLocations, setLocalDemoLocations] =
+    useState<Location[]>(defaultDemo);
 
   const handleAdd = async () => {
     const latitude = Number.parseFloat(lat);
@@ -75,6 +101,11 @@ export default function Tracking() {
   };
 
   const handleDelete = async (id: bigint) => {
+    if (locations.length === 0) {
+      setLocalDemoLocations((prev) => prev.filter((l) => l.id !== id));
+      toast.success("Entry deleted");
+      return;
+    }
     try {
       await deleteMutation.mutateAsync(id);
       toast.success("Entry deleted");
@@ -84,6 +115,23 @@ export default function Tracking() {
   };
 
   const handleToggle = async (id: bigint) => {
+    if (locations.length === 0) {
+      setLocalDemoLocations((prev) =>
+        prev.map((l) =>
+          l.id === id
+            ? {
+                ...l,
+                status:
+                  l.status === Status.Emergency
+                    ? Status.Safe
+                    : Status.Emergency,
+              }
+            : l,
+        ),
+      );
+      toast.success("Status updated");
+      return;
+    }
     try {
       await toggleMutation.mutateAsync(id);
       toast.success("Status updated");
@@ -98,31 +146,7 @@ export default function Tracking() {
 
   // Sample seed data for demo if empty
   const demoLocations: Location[] =
-    locations.length === 0
-      ? [
-          {
-            id: BigInt(1),
-            latitude: 28.6139,
-            longitude: 77.209,
-            timestamp: BigInt(Date.now() * 1_000_000 - 3600 * 1e9),
-            status: Status.Safe,
-          },
-          {
-            id: BigInt(2),
-            latitude: 19.076,
-            longitude: 72.8777,
-            timestamp: BigInt(Date.now() * 1_000_000 - 7200 * 1e9),
-            status: Status.Emergency,
-          },
-          {
-            id: BigInt(3),
-            latitude: 12.9716,
-            longitude: 77.5946,
-            timestamp: BigInt(Date.now() * 1_000_000 - 10800 * 1e9),
-            status: Status.Safe,
-          },
-        ]
-      : locations;
+    locations.length === 0 ? localDemoLocations : locations;
 
   const mapCenter: [number, number] =
     demoLocations.length > 0
